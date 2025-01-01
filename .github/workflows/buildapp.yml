@@ -44,33 +44,33 @@ concurrency:
 jobs:
   build:
     name: Build uYouPlus
-    runs-on: macos-13
+    runs-on: macos-latest
     permissions:
       contents: write
-
+   
     steps:
       - name: Checkout Main
-        uses: actions/checkout@v4.2.1
+        uses: actions/checkout@v4.2.2
         with:
           path: main
           submodules: recursive
-
+    
       - name: Caching brew dependencies
         id: brew_cache
-        uses: tecolicom/actions-use-homebrew-tools@v1.2
+        uses: tecolicom/actions-use-homebrew-tools@v1.3
         with:
           tools: ldid dpkg make
           cache: yes
-
+    
       - name: Install Dependencies
         if: steps.brew_cache.outputs.cache-hit != 'true'
         run: brew install ldid dpkg make
-
+   
       - name: Set PATH environment variable
         run: echo "$(brew --prefix make)/libexec/gnubin" >> $GITHUB_PATH 
-
+   
       - name: Setup Theos
-        uses: actions/checkout@v4.2.1
+        uses: actions/checkout@v4.2.2
         with:
           repository: theos/theos
           ref: master
@@ -79,7 +79,7 @@ jobs:
       
       - name: Caching SDK
         id: SDK
-        uses: actions/cache@v4.1.1
+        uses: actions/cache@v4.1.2
         env:
           cache-name: iOS-16.5-SDK
         with:
@@ -95,21 +95,20 @@ jobs:
           mv *.sdk $THEOS/sdks
         env:
           THEOS: ${{ github.workspace }}/theos
-
+   
       - name: Setup Theos Jailed
-        uses: actions/checkout@v4.2.1
+        uses: actions/checkout@v4.2.2
         with:
           repository: qnblackcat/theos-jailed
           ref: master
           path: theos-jailed
           submodules: recursive
-
       - name: Install Theos Jailed
         run: |
           ./theos-jailed/install
         env:
           THEOS: ${{ github.workspace }}/theos
-
+   
       - name: Prepare YouTube iPA
         id: prepare_youtube
         run: |
@@ -121,7 +120,6 @@ jobs:
           echo "==> YouTube v$youtube_version downloaded!"
           sed -i '' "17s#.*#YOUTUBE_VERSION = ${youtube_version}#g" Makefile
           echo "youtube_version=${youtube_version}" >> $GITHUB_OUTPUT
-
         env:
           THEOS: ${{ github.workspace }}/theos
           YOUTUBE_URL: ${{ inputs.decrypted_youtube_url }}
@@ -137,13 +135,12 @@ jobs:
           echo "package=$(ls -t packages | head -n1)" >>$GITHUB_OUTPUT
           echo -e "==> \033[1mSHASUM256: $(shasum -a 256 packages/*.ipa | cut -f1 -d' ')\033[0m"
           echo -e "==> \033[1mBundle ID: ${{ env.BUNDLE_ID }}\033[0m"
-
         env:
           THEOS: ${{ github.workspace }}/theos
           UYOU_VERSION: ${{ inputs.uyou_version }}
           BUNDLE_ID: ${{ inputs.bundle_id }}
           APP_NAME: ${{ inputs.app_name }}
-
+   
       - name: Upload Artifact
         if: ${{ inputs.upload_artifact }}
         uses: actions/upload-artifact@v4.4.3
@@ -154,10 +151,10 @@ jobs:
           name: uYouPlus_${{ env.YOUTUBE_VERSION }}_${{ env.UYOU_VERSION }}
           path: ${{ github.workspace }}/main/packages/${{ steps.build_package.outputs.package }}
           if-no-files-found: error
-
+     
       - name: Create Release
         id: create_release
-        uses: qnblackcat/action-gh-release@master
+        uses: softprops/action-gh-release@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UYOU_VERSION: ${{ inputs.uyou_version }}
